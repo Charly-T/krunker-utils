@@ -1,0 +1,140 @@
+num[] BLOCK_IDS = num[200, 201, 202, 210, 211, 212, 220, 221, 222];
+
+num action raycastFromPlayer(num maxRange) {
+	obj player = GAME.PLAYERS.getSelf();
+
+	obj[] blocks = obj[];
+	for (num i = 0; i < lengthOf BLOCK_IDS; i++) {
+        obj[] found = GAME.OBJECTS.getByInterface(BLOCK_IDS[i]);
+        for (num k = 0; k < lengthOf found; k++) {
+		    addTo blocks found[k];
+        }
+	}
+	num playerHeight = 9.5;
+	if ((bool)player.isCrouching) {
+		playerHeight = 6.5;
+	}
+
+    num px = (num)player.position.x;
+    num py = (num)player.position.y + playerHeight;
+    num pz = (num)player.position.z;
+    
+    num yaw = (num)player.rotation.x;
+    num pitch = (num)player.rotation.y;
+    
+    num dirX = -(Math.cos(pitch) * Math.sin(yaw));
+    num dirY = Math.sin(pitch);
+    num dirZ = -(Math.cos(pitch) * Math.cos(yaw));
+    
+    num len = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
+    dirX = dirX / len;
+    dirY = dirY / len;
+    dirZ = dirZ / len;
+    
+    num closestBlock = 0;
+    num closestDist = maxRange;
+    num blockSize = 2.5; # Half of the 5 per side block
+    
+    for (num i = 0; i < lengthOf blocks; i++) {
+        obj block = blocks[i];
+        num bx = (num)block.position.x;
+        num by = (num)block.position.y;
+        num bz = (num)block.position.z;
+        
+        num dx = bx - px;
+        num dy = by - py;
+        num dz = bz - pz;
+        num distSq = dx * dx + dy * dy + dz * dz;
+        
+        if (distSq > (maxRange + 5) * (maxRange + 5)) {
+            continue;
+        }
+        
+        num minX = bx - blockSize;
+        num maxX = bx + blockSize;
+        num minY = by - blockSize;
+        num maxY = by + blockSize;
+        num minZ = bz - blockSize;
+        num maxZ = bz + blockSize;
+        
+        num tMin = 0;
+        num tMax = maxRange;
+        
+        if (dirX != 0) {
+            num tx1 = (minX - px) / dirX;
+            num tx2 = (maxX - px) / dirX;
+            if (tx1 > tx2) {
+                num temp = tx1;
+                tx1 = tx2;
+                tx2 = temp;
+            }
+            if (tx1 > tMin) {
+                tMin = tx1;
+            }
+            if (tx2 < tMax) {
+                tMax = tx2;
+            }
+        } else {
+            if (px < minX || px > maxX) {
+                continue;
+            }
+        }
+        
+        if (dirY != 0) {
+            num ty1 = (minY - py) / dirY;
+            num ty2 = (maxY - py) / dirY;
+            if (ty1 > ty2) {
+                num temp = ty1;
+                ty1 = ty2;
+                ty2 = temp;
+            }
+            if (ty1 > tMin) {
+                tMin = ty1;
+            }
+            if (ty2 < tMax) {
+                tMax = ty2;
+            }
+        } else {
+            if (py < minY || py > maxY) {
+                continue;
+            }
+        }
+        
+        if (dirZ != 0) {
+            num tz1 = (minZ - pz) / dirZ;
+            num tz2 = (maxZ - pz) / dirZ;
+            if (tz1 > tz2) {
+                num temp = tz1;
+                tz1 = tz2;
+                tz2 = temp;
+            }
+            if (tz1 > tMin) {
+                tMin = tz1;
+            }
+            if (tz2 < tMax) {
+                tMax = tz2;
+            }
+        } else {
+            if (pz < minZ || pz > maxZ) {
+                continue;
+            }
+        }
+        
+        if (tMax >= tMin && tMin < closestDist) {
+            closestDist = tMin;
+            closestBlock = BLOCK_IDS[i];
+        }
+    }
+    
+    return closestBlock;
+}
+
+public action update(num delta) {
+    num raycasted = raycastFromPlayer(20);
+	if (raycasted != 0) {
+        # This is for showcase. You should NOT call raytrace on every update.
+		obj traced = GAME.OBJECTS.getByInterface(raycasted)[0];
+		traced.opacity = 0.1;
+		GAME.log("Raycast hit: ", toStr raycasted);
+	}
+}
